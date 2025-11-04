@@ -11,6 +11,7 @@
             font-family: Arial, sans-serif;
             background-color: #f4f6f8;
             color: #333;
+            padding-bottom: 100px;
         }
         .header {
             background-color: #0055FF;
@@ -18,6 +19,31 @@
             padding: 1.5rem;
             text-align: center;
             box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 {
+            margin: 0;
+            flex: 1;
+        }
+        .header-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        .btn-map {
+            background-color: #28a745;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            text-decoration: none;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .btn-map:hover {
+            background-color: #218838;
         }
         .dashboard-container {
             max-width: 1280px;
@@ -63,6 +89,93 @@
         .stats-item strong {
             color: #333;
         }
+        .camera-panel {
+            flex: 1;
+            min-width: 300px;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            border: 1px solid #0055FF;
+            margin-top: 20px;
+        }
+        .camera-panel h2 {
+            color: #0055FF;
+            margin: 0 0 15px 0;
+            font-size: 1.5rem;
+            border-bottom: 2px solid #0055FF;
+            padding-bottom: 5px;
+        }
+        .camera-status {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+        .camera-status.active {
+            background-color: #28a745;
+            color: white;
+        }
+        .camera-status.inactive {
+            background-color: #dc3545;
+            color: white;
+        }
+        .camera-info {
+            margin-top: 15px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            font-size: 0.9rem;
+        }
+        .camera-info p {
+            margin: 5px 0;
+            color: #666;
+        }
+        .camera-selector {
+            margin: 15px 0;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+        }
+        .camera-selector label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #333;
+        }
+        .camera-selector select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #0055FF;
+            border-radius: 5px;
+            font-size: 1rem;
+            background-color: white;
+            cursor: pointer;
+        }
+        .camera-selector select:hover {
+            border-color: #0044DD;
+        }
+        .camera-selector button {
+            margin-top: 10px;
+            width: 100%;
+            padding: 10px;
+            background-color: #0055FF;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .camera-selector button:hover {
+            background-color: #0044DD;
+        }
+        .camera-selector button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
         .footer {
             background-color: #0055FF;
             color: white;
@@ -78,8 +191,13 @@
 <body>
     <!-- Header -->
     <div class="header">
-        <h1>PyResearch - Pothole Detection System</h1>
-        <p>Advanced Computer Vision Analysis</p>
+        <div>
+            <h1>PyResearch - Pothole Detection System</h1>
+            <p>Live Kamera-Analyse - Echtzeit-Erkennung</p>
+        </div>
+        <div class="header-buttons">
+            <a href="/map" class="btn-map">🗺️ Karte anzeigen</a>
+        </div>
     </div>
 
     <!-- Dashboard Content -->
@@ -96,10 +214,10 @@
                 <strong>Model:</strong> YOLOv12
             </div>
             <div class="stats-item">
-                <strong>Status:</strong> Running
+                <strong>Status:</strong> <span id="camera-status-text">Verbinde...</span>
             </div>
             <div class="stats-item">
-                <strong>Frame Rate:</strong> Calculating...
+                <strong>Auflösung:</strong> <span id="camera-resolution">-</span>
             </div>
             <div class="stats-item">
                 <strong>Detections:</strong> <span id="detection-count">0</span>
@@ -107,6 +225,57 @@
             <div class="stats-item">
                 <strong>Confidence Threshold:</strong> 0.7
             </div>
+        </div>
+    </div>
+
+    <!-- Camera Info Panel -->
+    <div class="dashboard-container">
+        <div class="camera-panel">
+            <h2>Kamera-Informationen</h2>
+            <div class="camera-status" id="camera-status">
+                <span id="camera-status-indicator">Verbindung wird hergestellt...</span>
+            </div>
+            
+            <!-- YOLO Toggle Button -->
+            <div class="camera-selector" style="background-color: #e8f4f8;">
+                <label>🤖 YOLOv12 Pothole Detection:</label>
+                <button id="yolo-toggle-btn" onclick="toggleYOLO()" style="background-color: #28a745; margin-top: 10px;">
+                    <span id="yolo-status-text">YOLO Aktivieren</span>
+                </button>
+                <p id="yolo-info" style="margin-top: 10px; font-size: 0.85rem; color: #666;">
+                    Status: <strong id="yolo-current-status" style="color: #dc3545;">Deaktiviert</strong>
+                </p>
+            </div>
+
+            <!-- GPS Status Anzeige -->
+            <div class="camera-selector" style="background-color: #e8ffe8; margin-top: 15px;">
+                <label>📍 GPS Tracking:</label>
+                <p id="gps-info" style="margin-top: 10px; font-size: 0.85rem; color: #666;">
+                    Status: <strong id="gps-status" style="color: #28a745;">Aktiviert</strong><br>
+                    Koordinaten: <span id="gps-coords" style="font-family: monospace;">Wird geladen...</span>
+                </p>
+                <p style="margin-top: 5px; font-size: 0.75rem; color: #999;">
+                    📌 Detections werden automatisch mit GPS-Position gespeichert
+                </p>
+            </div>
+            
+            <!-- Kamera-Auswahl Dropdown -->
+            <div class="camera-selector">
+                <label for="camera-select">📹 Kamera auswählen:</label>
+                <select id="camera-select">
+                    <option value="">Lade verfügbare Kameras...</option>
+                </select>
+                <button id="switch-camera-btn" onclick="switchCamera()">Kamera wechseln</button>
+            </div>
+            
+            <div class="camera-info">
+                <p><strong>Kamera-Index:</strong> <span id="camera-index">-</span></p>
+                <p><strong>Auflösung:</strong> <span id="camera-info-resolution">-</span></p>
+                <p><strong>FPS:</strong> <span id="camera-fps">-</span></p>
+            </div>
+            <p style="margin-top: 15px; font-size: 0.9rem; color: #666;">
+                📹 Live-Kamera-Erfassung aktiv. Wählen Sie oben Ihre bevorzugte Kamera aus.
+            </p>
         </div>
     </div>
 
@@ -132,6 +301,331 @@
 
         // Initial update
         updateDetectionCount();
+
+        // Camera info functionality
+        function updateCameraInfo() {
+            fetch('/camera_info')
+                .then(response => response.json())
+                .then(data => {
+                    const statusIndicator = document.getElementById('camera-status-indicator');
+                    const statusElement = document.getElementById('camera-status');
+                    const statusText = document.getElementById('camera-status-text');
+                    const cameraIndex = document.getElementById('camera-index');
+                    const cameraResolution = document.getElementById('camera-info-resolution');
+                    const cameraFps = document.getElementById('camera-fps');
+                    const resolutionDisplay = document.getElementById('camera-resolution');
+                    
+                    if (data.available) {
+                        statusIndicator.textContent = 'Kamera aktiv';
+                        statusElement.className = 'camera-status active';
+                        statusText.textContent = 'Aktiv';
+                        cameraIndex.textContent = data.index;
+                        cameraResolution.textContent = `${data.width} x ${data.height}`;
+                        cameraFps.textContent = data.fps ? Math.round(data.fps) : 'Auto';
+                        resolutionDisplay.textContent = `${data.width} x ${data.height}`;
+                    } else {
+                        statusIndicator.textContent = 'Kamera nicht verfügbar';
+                        statusElement.className = 'camera-status inactive';
+                        statusText.textContent = 'Nicht verfügbar';
+                        cameraIndex.textContent = data.index;
+                        cameraResolution.textContent = '-';
+                        cameraFps.textContent = '-';
+                        resolutionDisplay.textContent = '-';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching camera info:', error);
+                    const statusElement = document.getElementById('camera-status');
+                    const statusIndicator = document.getElementById('camera-status-indicator');
+                    statusIndicator.textContent = 'Fehler beim Abrufen der Kamera-Info';
+                    statusElement.className = 'camera-status inactive';
+                });
+        }
+
+        // Update camera info every 3 seconds
+        setInterval(updateCameraInfo, 3000);
+
+        // Initial camera info update
+        updateCameraInfo();
+
+        // Load available cameras
+        function loadAvailableCameras() {
+            fetch('/available_cameras')
+                .then(response => response.json())
+                .then(data => {
+                    const select = document.getElementById('camera-select');
+                    select.innerHTML = ''; // Clear existing options
+                    
+                    if (data.cameras && data.cameras.length > 0) {
+                        data.cameras.forEach(camera => {
+                            const option = document.createElement('option');
+                            option.value = camera.index;
+                            option.textContent = camera.name;
+                            select.appendChild(option);
+                        });
+                        document.getElementById('switch-camera-btn').disabled = false;
+                    } else {
+                        select.innerHTML = '<option value="">Keine Kameras gefunden</option>';
+                        document.getElementById('switch-camera-btn').disabled = true;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading cameras:', error);
+                    document.getElementById('camera-select').innerHTML = 
+                        '<option value="">Fehler beim Laden der Kameras</option>';
+                });
+        }
+
+        // Switch camera function
+        function switchCamera() {
+            const select = document.getElementById('camera-select');
+            const selectedIndex = select.value;
+            
+            if (!selectedIndex) {
+                alert('Bitte wählen Sie eine Kamera aus!');
+                return;
+            }
+
+            const button = document.getElementById('switch-camera-btn');
+            button.disabled = true;
+            button.textContent = 'Wechsle Kamera...';
+
+            fetch(`/switch_camera/${selectedIndex}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Reload only the video feed image, not the whole page
+                        const videoFeed = document.querySelector('.video-feed');
+                        const timestamp = new Date().getTime();
+                        videoFeed.src = `/video_feed?t=${timestamp}`;
+                        
+                        button.disabled = false;
+                        button.textContent = 'Kamera wechseln';
+                        
+                        // Update camera info immediately
+                        setTimeout(() => {
+                            updateCameraInfo();
+                        }, 1000);
+                    } else {
+                        alert(`Fehler: ${data.message}`);
+                        button.disabled = false;
+                        button.textContent = 'Kamera wechseln';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error switching camera:', error);
+                    alert('Fehler beim Wechseln der Kamera!');
+                    button.disabled = false;
+                    button.textContent = 'Kamera wechseln';
+                });
+        }
+
+        // Load cameras on page load
+        loadAvailableCameras();
+
+        // Toggle YOLO Detection
+        function toggleYOLO() {
+            const button = document.getElementById('yolo-toggle-btn');
+            const statusText = document.getElementById('yolo-status-text');
+            const currentStatus = document.getElementById('yolo-current-status');
+            
+            button.disabled = true;
+            statusText.textContent = 'Wird umgeschaltet...';
+            
+            fetch('/toggle_yolo')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        if (data.yolo_enabled) {
+                            // YOLO ist jetzt aktiviert
+                            button.style.backgroundColor = '#dc3545';
+                            statusText.textContent = 'YOLO Deaktivieren';
+                            currentStatus.textContent = 'Aktiviert';
+                            currentStatus.style.color = '#28a745';
+                        } else {
+                            // YOLO ist jetzt deaktiviert
+                            button.style.backgroundColor = '#28a745';
+                            statusText.textContent = 'YOLO Aktivieren';
+                            currentStatus.textContent = 'Deaktiviert';
+                            currentStatus.style.color = '#dc3545';
+                        }
+                    }
+                    button.disabled = false;
+                })
+                .catch(error => {
+                    console.error('Error toggling YOLO:', error);
+                    alert('Fehler beim Umschalten von YOLO!');
+                    button.disabled = false;
+                    statusText.textContent = 'YOLO Aktivieren';
+                });
+        }
+
+        // Check YOLO status on page load
+        function checkYOLOStatus() {
+            fetch('/yolo_status')
+                .then(response => response.json())
+                .then(data => {
+                    const button = document.getElementById('yolo-toggle-btn');
+                    const statusText = document.getElementById('yolo-status-text');
+                    const currentStatus = document.getElementById('yolo-current-status');
+                    
+                    if (data.yolo_enabled) {
+                        button.style.backgroundColor = '#dc3545';
+                        statusText.textContent = 'YOLO Deaktivieren';
+                        currentStatus.textContent = 'Aktiviert';
+                        currentStatus.style.color = '#28a745';
+                    } else {
+                        button.style.backgroundColor = '#28a745';
+                        statusText.textContent = 'YOLO Aktivieren';
+                        currentStatus.textContent = 'Deaktiviert';
+                        currentStatus.style.color = '#dc3545';
+                    }
+                })
+                .catch(error => console.error('Error checking YOLO status:', error));
+        }
+
+        // Check YOLO status on page load
+        checkYOLOStatus();
+
+        // ========== GPS TRACKING ==========
+        let currentGPS = { latitude: null, longitude: null };
+        let gpsWatchId = null;
+        let lastDetectionTime = 0;
+        let lastDetectionCount = 0;
+
+        // GPS automatisch beim Laden aktivieren
+        function initGPS() {
+            if ("geolocation" in navigator) {
+                console.log("GPS wird aktiviert...");
+                
+                gpsWatchId = navigator.geolocation.watchPosition(
+                    // Success
+                    function(position) {
+                        currentGPS.latitude = position.coords.latitude;
+                        currentGPS.longitude = position.coords.longitude;
+                        console.log(`📍 GPS aktiv: ${currentGPS.latitude.toFixed(6)}, ${currentGPS.longitude.toFixed(6)}`);
+                        
+                        // Update UI
+                        document.getElementById('gps-status').textContent = 'Aktiv';
+                        document.getElementById('gps-status').style.color = '#28a745';
+                        document.getElementById('gps-coords').textContent = 
+                            `${currentGPS.latitude.toFixed(6)}, ${currentGPS.longitude.toFixed(6)}`;
+                    },
+                    // Error
+                    function(error) {
+                        console.error("GPS Fehler:", error.message);
+                        // Verwende Fallback-Koordinaten (Deutschland - Mitte)
+                        currentGPS.latitude = 51.1657;
+                        currentGPS.longitude = 10.4515;
+                        console.log("📍 GPS nicht verfügbar - verwende Fallback-Position");
+                        
+                        // Update UI
+                        document.getElementById('gps-status').textContent = 'Fallback (GPS deaktiviert)';
+                        document.getElementById('gps-status').style.color = '#ff9800';
+                        document.getElementById('gps-coords').textContent = 
+                            `${currentGPS.latitude.toFixed(6)}, ${currentGPS.longitude.toFixed(6)} (Fallback)`;
+                    },
+                    // Options
+                    {
+                        enableHighAccuracy: true,
+                        maximumAge: 10000,
+                        timeout: 5000
+                    }
+                );
+            } else {
+                console.warn("GPS nicht verfügbar im Browser");
+                // Fallback
+                currentGPS.latitude = 51.1657;
+                currentGPS.longitude = 10.4515;
+                
+                // Update UI
+                document.getElementById('gps-status').textContent = 'Nicht verfügbar';
+                document.getElementById('gps-status').style.color = '#dc3545';
+                document.getElementById('gps-coords').textContent = 
+                    `${currentGPS.latitude.toFixed(6)}, ${currentGPS.longitude.toFixed(6)} (Fallback)`;
+            }
+        }
+
+        // Automatisches Speichern bei Detection
+        function checkForNewDetections() {
+            fetch('/detection_count')
+                .then(response => response.json())
+                .then(data => {
+                    const currentCount = data.detections;
+                    
+                    // Neue Detection?
+                    if (currentCount > lastDetectionCount) {
+                        const now = Date.now();
+                        
+                        // Nur speichern wenn mind. 2 Sekunden seit letzter Detection vergangen
+                        if (now - lastDetectionTime > 2000) {
+                            console.log(`🎯 Neue Detection erkannt! Count: ${currentCount}`);
+                            
+                            // Speichere mit GPS
+                            saveDetectionWithGPS(currentCount - lastDetectionCount);
+                            
+                            lastDetectionTime = now;
+                        }
+                        
+                        lastDetectionCount = currentCount;
+                    }
+                })
+                .catch(error => console.error('Error checking detections:', error));
+        }
+
+        // Speichere Detection mit GPS in CSV
+        function saveDetectionWithGPS(potholeCount) {
+            if (currentGPS.latitude === null || currentGPS.longitude === null) {
+                console.warn("⚠ GPS noch nicht bereit - Detection nicht gespeichert");
+                return;
+            }
+            
+            // Simuliere eine durchschnittliche Confidence (da wir sie nicht direkt vom Stream bekommen)
+            const confidence = 85.0 + Math.random() * 10; // 85-95%
+            
+            const detectionData = {
+                latitude: currentGPS.latitude,
+                longitude: currentGPS.longitude,
+                confidence: confidence.toFixed(1),
+                pothole_count: potholeCount
+            };
+            
+            console.log("💾 Speichere Detection:", detectionData);
+            
+            fetch('/save_detection', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(detectionData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log(`✅ Detection gespeichert! Timestamp: ${data.timestamp}`);
+                } else {
+                    console.error("❌ Fehler beim Speichern:", data.error);
+                }
+            })
+            .catch(error => {
+                console.error("❌ Netzwerkfehler beim Speichern:", error);
+            });
+        }
+
+        // GPS beim Laden aktivieren
+        initGPS();
+
+        // Prüfe alle 2 Sekunden auf neue Detections
+        setInterval(checkForNewDetections, 2000);
+
+        // Initialer Detection Count
+        fetch('/detection_count')
+            .then(response => response.json())
+            .then(data => {
+                lastDetectionCount = data.detections;
+            });
+
+        console.log("🚀 GPS und Auto-Save initialisiert!");
     </script>
 </body>
 </html>

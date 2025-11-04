@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pothole Map - Erkannte Schlaglöcher</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header h1 {
+            color: #333;
+            font-size: 28px;
+        }
+        
+        .header-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+        
+        .btn-success {
+            background: #48bb78;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #38a169;
+        }
+        
+        .stats {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            display: flex;
+            gap: 30px;
+            align-items: center;
+        }
+        
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .stat-icon {
+            font-size: 24px;
+        }
+        
+        .stat-text {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .stat-value {
+            font-size: 20px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .map-container {
+            background: white;
+            padding: 10px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        #map {
+            height: 600px;
+            border-radius: 5px;
+        }
+        
+        .leaflet-popup-content {
+            margin: 15px;
+            min-width: 200px;
+        }
+        
+        .popup-content h3 {
+            margin: 0 0 10px 0;
+            color: #667eea;
+        }
+        
+        .popup-content p {
+            margin: 5px 0;
+            color: #333;
+        }
+        
+        .popup-content strong {
+            color: #666;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🗺️ Pothole Detection Map</h1>
+            <div class="header-buttons">
+                <a href="/" class="btn btn-primary">← Zurück zur Kamera</a>
+                <button class="btn btn-success" onclick="downloadCSV()">📥 CSV Download</button>
+            </div>
+        </div>
+        
+        <!-- Statistik -->
+        <div class="stats">
+            <div class="stat-item">
+                <span class="stat-icon">🎯</span>
+                <div class="stat-text">
+                    <span class="stat-label">Gesamt Detections</span>
+                    <span class="stat-value" id="total-detections">0</span>
+                </div>
+            </div>
+            <div class="stat-item">
+                <span class="stat-icon">📍</span>
+                <div class="stat-text">
+                    <span class="stat-label">Verschiedene Standorte</span>
+                    <span class="stat-value" id="unique-locations">0</span>
+                </div>
+            </div>
+            <div class="stat-item">
+                <span class="stat-icon">⭐</span>
+                <div class="stat-text">
+                    <span class="stat-label">Durchschn. Confidence</span>
+                    <span class="stat-value" id="avg-confidence">0%</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Karte -->
+        <div class="map-container">
+            <div id="map"></div>
+            <div class="loading" id="loading">
+                Lade Pothole-Daten...
+            </div>
+        </div>
+    </div>
+    
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <script>
+        let map;
+        let markers = [];
+        
+        // Initialisiere Karte
+        function initMap() {
+            // Erstelle Karte (zentriert auf Deutschland)
+            map = L.map('map').setView([51.1657, 10.4515], 6);
+            
+            // OpenStreetMap Layer hinzufügen
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors',
+                maxZoom: 19
+            }).addTo(map);
+            
+            console.log("Karte initialisiert!");
+            
+            // Lade Pothole-Daten
+            loadDetections();
+        }
+        
+        // Lade alle Detections aus dem Backend
+        function loadDetections() {
+            fetch('/get_detections')
+                .then(response => response.json())
+                .then(data => {
+                    console.log("Detections geladen:", data);
+                    document.getElementById('loading').style.display = 'none';
+                    
+                    if (data.detections && data.detections.length > 0) {
+                        displayDetections(data.detections);
+                        updateStats(data.detections);
+                        
+                        // Zoom zur ersten Detection
+                        const first = data.detections[0];
+                        map.setView([first.latitude, first.longitude], 13);
+                    } else {
+                        console.log("Keine Detections vorhanden");
+                        alert("Noch keine Pothole-Detections vorhanden!\n\nGehen Sie zur Kamera-Seite und aktivieren Sie YOLO, um Potholes zu erkennen.");
+                    }
+                })
+                .catch(error => {
+                    console.error("Fehler beim Laden:", error);
+                    document.getElementById('loading').innerHTML = 
+                        '❌ Fehler beim Laden der Daten. Bitte versuchen Sie es später erneut.';
+                });
+        }
+        
+        // Zeige Detections auf der Karte
+        function displayDetections(detections) {
+            // Lösche alte Marker
+            markers.forEach(marker => map.removeLayer(marker));
+            markers = [];
+            
+            // Erstelle rote Icon
+            const redIcon = L.icon({
+                iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+                shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                iconSize: [25, 41],
+                iconAnchor: [12, 41],
+                popupAnchor: [1, -34],
+                shadowSize: [41, 41]
+            });
+            
+            // Füge Marker für jede Detection hinzu
+            detections.forEach(detection => {
+                const marker = L.marker(
+                    [detection.latitude, detection.longitude],
+                    { icon: redIcon }
+                ).addTo(map);
+                
+                // Popup mit Details
+                const popupContent = `
+                    <div class="popup-content">
+                        <h3>🕳️ Pothole Detection</h3>
+                        <p><strong>Zeit:</strong> ${detection.timestamp}</p>
+                        <p><strong>GPS:</strong> ${detection.latitude.toFixed(6)}, ${detection.longitude.toFixed(6)}</p>
+                        <p><strong>Confidence:</strong> ${detection.confidence}%</p>
+                        <p><strong>Anzahl:</strong> ${detection.pothole_count}</p>
+                    </div>
+                `;
+                
+                marker.bindPopup(popupContent);
+                markers.push(marker);
+            });
+            
+            console.log(`${detections.length} Marker hinzugefügt!`);
+        }
+        
+        // Update Statistiken
+        function updateStats(detections) {
+            // Gesamt Detections
+            document.getElementById('total-detections').textContent = detections.length;
+            
+            // Unique Locations (vereinfacht - zählt alle)
+            document.getElementById('unique-locations').textContent = detections.length;
+            
+            // Durchschnittliche Confidence
+            const avgConfidence = detections.reduce((sum, d) => sum + parseFloat(d.confidence), 0) / detections.length;
+            document.getElementById('avg-confidence').textContent = avgConfidence.toFixed(1) + '%';
+        }
+        
+        // CSV Download
+        function downloadCSV() {
+            window.location.href = '/download_csv';
+        }
+        
+        // Initialisiere Karte beim Laden
+        window.onload = initMap;
+    </script>
+</body>
+</html>
+
